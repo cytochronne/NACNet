@@ -303,6 +303,8 @@ class YFCCDataset(RealStereoDataset):
         return noise_mean, noise_std
 
 
+
+
 class NoiseNormalization:
     def __init__(self, mean, std):
         self.mean = mean.unsqueeze(0)
