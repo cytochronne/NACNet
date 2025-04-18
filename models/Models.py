@@ -160,7 +160,12 @@ class RobustModel(pl.LightningModule):
 
     def batch_eval(self, batch):
         # Get predictions
+        #gt_shape是每个样本的“真值形状参数”，本质矩阵。
         gt_shape, sampled_pts, gt_outliers, supp_data = batch
+        # print("gt_shape:", gt_shape.shape if hasattr(gt_shape, 'shape') else type(gt_shape))
+        # print("sampled_pts:", sampled_pts.shape if hasattr(sampled_pts, 'shape') else type(sampled_pts))
+        # print("gt_outliers:", gt_outliers.shape if hasattr(gt_outliers, 'shape') else type(gt_outliers))
+        # print("supp_data keys:", supp_data.keys() if isinstance(supp_data, dict) else type(supp_data))
         pred_shape, b_pred_outliers, corrected_pts = self.get_strict_batch_prediction(sampled_pts, supp_data)
 
         # Evaluation

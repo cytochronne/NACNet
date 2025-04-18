@@ -1,5 +1,5 @@
 from Datasets.BaseDataset import init_dataloader
-from Datasets.StereoDataset import YFCCDataset, SUN3DDataset
+from Datasets.StereoDataset import YFCCDataset, SUN3DDataset, KITTIDataset
 
 
 def get_dataset_class(args):
@@ -7,8 +7,10 @@ def get_dataset_class(args):
         return YFCCDataset
     elif args.data_type == "SUN3D":
         return SUN3DDataset
+    elif args.data_type == "KITTI":
+        return KITTIDataset
     else:
-        raise NotImplementedError
+        raise NotImplementedError("Unsupported dataset type: " + args.data_type)
 
 
 def get_dataloaders(args, val_batch_size=32):
@@ -25,7 +27,12 @@ def get_dataloaders(args, val_batch_size=32):
 
 def get_test_dataloader(args, known_scenes=False, batch_size=32):
     dataset_class = get_dataset_class(args)
-    if known_scenes:
+    if args.data_type == "KITTI" and hasattr(args, 'sequence') and args.sequence:
+        # 创建特定序列的数据集
+        data_type = f"test_{args.sequence}"
+        
+        test_ds = dataset_class(data_type, args)
+    elif known_scenes:
         test_ds = dataset_class('testknown', args)
     else:
         test_ds = dataset_class('test', args)

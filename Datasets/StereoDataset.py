@@ -302,7 +302,105 @@ class YFCCDataset(RealStereoDataset):
         noise_std = torch.tensor([0.0007, 0.0010, 0.0007, 0.0010])
         return noise_mean, noise_std
 
+class KITTIDataset(RealStereoDataset):
+    """加载 OANet/data_dump 文件夹中的 KITTI 数据集"""
+    def __init__(self, data_type, args):
+        # 特殊处理 data_type，使其适应序列划分
+        #get_test_dataloader中会设置data_type = f"test_{args.sequence}
+        self.mode = data_type
+        self.sequence = args.sequence if hasattr(args, 'sequence') else None
+            
+        # 继承父类初始化
+        super(KITTIDataset, self).__init__(self.mode, args)
+        
+        # 更新数据路径以指向正确的序列
+        if self.sequence is not None:
+            self.data_file_path = self.get_sequence_file_path(args.data_path, self.sequence, args.desc_name)
+        
+        self.data_len = self.get_data_len(self.data_file_path, self.mode, args.desc_name)
+        print(f"KITTI Dataset initialized: wanted Mode={self.mode}, wanted Sequence={self.sequence}, actual File={self.data_file_path}")
 
+    @classmethod
+    def get_data_file_path(cls, data_path, data_type, desc_name):
+        """获取所有 KITTI 数据的主 HDF5 文件路径"""
+        return os.path.join(data_path, f"kitti-{desc_name}-{data_type}.hdf5")
+    
+    @classmethod
+    def get_sequence_file_path(cls, data_path, sequence, desc_name):
+        """获取特定序列的 HDF5 文件路径"""
+        # 首先检查是否有专用的序列 HDF5 文件
+        sequence_file = os.path.join(data_path, f"kitti-{sequence}-{desc_name}-test.hdf5")
+        if os.path.exists(sequence_file):
+            return sequence_file
+        
+        # 否则使用主 HDF5 文件
+        return os.path.join(data_path, f"kitti-{desc_name}-test.hdf5")
+
+    @classmethod
+    def get_data_len(cls, data_path, data_type, desc_name):
+        """获取数据集长度"""
+        try:
+            file_path = data_path
+
+            # 打开文件并计算样本数
+            with h5py.File(file_path, 'r') as data_file:
+                keys = list(data_file['xs'].keys())
+                # 将所有键转为整数
+                keys_int = [int(k) for k in keys]
+                # 取最大值加1作为数据长度
+                computed_len = max(keys_int) + 1
+                print(f"Computed length: {computed_len}")
+                # 如果你希望强制键连续，可以做集合比较
+                expected_set = set(range(computed_len))
+                if set(keys_int) != expected_set:
+                    print(f"Warning: dataset keys are not continuous for {file_path}. Found {len(keys_int)} keys.")
+                return computed_len
+        except Exception as e:
+            print(f"Error determining dataset length: {str(e)}")
+            return 0
+    
+    def get_stereo_data(self, idx):
+        """获取立体图像数据对"""
+        if self.data is None:
+            self.data = h5py.File(self.data_file_path, 'r')
+        
+        # 检查索引是否在序列中
+        if str(idx) not in self.data['xs']:
+            raise IndexError(f"Index {idx} not found in dataset")
+        
+        # 提取数据
+        xs = np.asarray(self.data['xs'][str(idx)]).squeeze(0)
+        #print(f"xs shape: {xs.shape}")
+        snn_ratio = np.asarray(self.data['ratios'][str(idx)]).reshape(-1, 1)
+        R = np.asarray(self.data['Rs'][str(idx)])
+        t = np.asarray(self.data['ts'][str(idx)])
+        e_gt = stereo_2d.calc_essential_mat(t, R)
+        
+        # Print shapes and values for debugging
+        # print(f"idx: {idx}")
+        # print(f"R shape: {R.shape}, R values: {R}")
+        # print(f"t shape: {t.shape}, t values: {t}")
+        # print(f"e_gt shape: {e_gt.shape}, e_gt values: {e_gt}")
+
+        
+        # KITTI 数据集使用 SED (对称极线距离) 方法
+        geod_dist = np.asarray(self.data['ys'][str(idx)])
+        outliers_mask = (geod_dist > self.stereo_geod_th).astype(float)
+
+        #读取pose_rel中的R和t作为真值
+
+
+        #R_true = 
+
+        
+        return xs, R, t, outliers_mask, snn_ratio, e_gt
+    
+    @classmethod
+    def get_noise_mean_n_std(cls, args):
+        # KITTI 数据集的噪声均值和标准差
+        noise_mean = torch.tensor([-5.0e-06, -6.0e-06, -5.0e-06, -7.0e-06])
+        noise_std = torch.tensor([0.0005, 0.0008, 0.0005, 0.0008])
+        return noise_mean, noise_std
 
 
 class NoiseNormalization:

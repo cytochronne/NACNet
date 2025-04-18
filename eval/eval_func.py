@@ -7,7 +7,7 @@ import os
 def eval_classification(b_pred_outliers, gt_outliers):
     b_pred_inliers = b_pred_outliers.apply_func(lambda x: 1 - x)
     gt_inliers = gt_outliers.apply_func(lambda x: 1 - x)
-
+    
     # Calc precision and IoU
     TP = b_pred_inliers[gt_inliers].sum(dim=1).squeeze(1)
     FP = b_pred_inliers[gt_outliers].sum(dim=1).squeeze(1)

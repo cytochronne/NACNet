@@ -8,19 +8,19 @@ def get_config_parser():
 
     # Experiment setting
     parser.add_argument('--conf', is_config_file=True, help='config file path')
-    parser.add_argument('--run_name', type=str, required=True)
+    parser.add_argument('--run_name', type=str, default='test')
     parser.add_argument('--version', type=str, default=None)
     parser.add_argument('--resume', type=argparse_bool, default=False)
 
     # Data args
-    parser.add_argument('--data_type', type=str, default="YFCC")
-    parser.add_argument('--desc_name', type=str, default="sift-2000")
-    parser.add_argument('--noise_free', type=argparse_bool, default=False)
+    parser.add_argument('--data_type', type=str, default="KITTI")
+    parser.add_argument('--desc_name', type=str, default="sift-1000")
+    parser.add_argument('--noise_free', type=argparse_bool, default=True)
 
     # Real world data args
     parser.add_argument("--stereo_geod_th", type=float, default=3e-3, help="theshold for the good geodesic distance")
     parser.add_argument("--stereo_geod_method", type=str, default="RepErr")
-    parser.add_argument('--data_path', type=str, required=True)
+    parser.add_argument('--data_path', type=str, default='/hpc2hdd/home/qzhang749/yanzhe/test/NACNet/OANet/data_dump')
     parser.add_argument('--snn_threshold', type=float, default=1)
 
     # Train args
@@ -70,6 +70,8 @@ def get_config_parser():
     parser.add_argument('--ransac_in_eval', type=argparse_bool, default=False)
     parser.add_argument('--eval_knwon_scenes', type=argparse_bool, default=False)
 
+    parser.add_argument('--sequences', type=str, default='00,01,02,03,04,05,06,07,08,09,10',
+                       help='Comma-separated list of sequences to evaluate')
     return parser
 
 
