@@ -21,7 +21,7 @@ class BaseStereoDataset(BaseDataset.BaseDataset, ABC):
         pass
 
     def get_item(self, idx):
-        xs, R, t, outliers_mask, snn_ratio, e_gt = self.get_stereo_data(idx)
+        xs, R, t, outliers_mask, snn_ratio, e_gt, R_true, t_true = self.get_stereo_data(idx)
 
         # Get corrected pts
         pts1, pts2 = np.split(xs, 2, axis=-1)
@@ -40,13 +40,23 @@ class BaseStereoDataset(BaseDataset.BaseDataset, ABC):
 
         gt_shape = stereo_2d.E_to_shape(e_gt)
 
-        supp_data = dict(snn_ratio=snn_ratio, e_gt=e_gt, pts_virt=pts_virt, R=R, t=t, idx=idx, crct_pts=crct_pts)
+        supp_data = dict(snn_ratio=snn_ratio, e_gt=e_gt, pts_virt=pts_virt, R=R, t=t, idx=idx, crct_pts=crct_pts
+                         , R_true=R_true, t_true=t_true)
         return self.to_torch(gt_shape, xs, outliers_mask, supp_data)
 
     @ classmethod
     def collate_sets(cls, batch):
-        supp_data_collate_func = dict(snn_ratio=TensorSet.TensorSet, e_gt=torch.stack,  pts_virt=torch.stack,
-                                      R=torch.stack, t=torch.stack, idx=torch.tensor, crct_pts=TensorSet.TensorSet)
+        supp_data_collate_func = dict(
+            snn_ratio=TensorSet.TensorSet,
+            e_gt=torch.stack,
+            pts_virt=torch.stack,
+            R=torch.stack,
+            t=torch.stack,
+            idx=torch.tensor,
+            crct_pts=TensorSet.TensorSet,
+            R_true=torch.stack,
+            t_true=torch.stack
+        )
         return TensorSet.collate_sets(batch, supp_data_collate_func)
 
     @staticmethod
@@ -374,6 +384,22 @@ class KITTIDataset(RealStereoDataset):
         snn_ratio = np.asarray(self.data['ratios'][str(idx)]).reshape(-1, 1)
         R = np.asarray(self.data['Rs'][str(idx)])
         t = np.asarray(self.data['ts'][str(idx)])
+        
+        # 读取真值姿态数据(如果存在)
+        R_true = None
+        t_true = None
+        try:
+            if 'Rs_true' in self.data and str(idx) in self.data['Rs_true']:
+                R_true = np.asarray(self.data['Rs_true'][str(idx)])
+                if 'ts_true' in self.data and str(idx) in self.data['ts_true']:
+                    t_true = np.asarray(self.data['ts_true'][str(idx)])
+                    # 使用真值替代估计值，如果你想使用真值的话
+                    # R = R_true
+                    # t = t_true
+                    #print(f"Found ground truth pose for idx {idx}")
+        except Exception as e:
+            print(f"Error reading ground truth data for idx {idx}: {e}")
+        
         e_gt = stereo_2d.calc_essential_mat(t, R)
         
         # Print shapes and values for debugging
@@ -381,19 +407,12 @@ class KITTIDataset(RealStereoDataset):
         # print(f"R shape: {R.shape}, R values: {R}")
         # print(f"t shape: {t.shape}, t values: {t}")
         # print(f"e_gt shape: {e_gt.shape}, e_gt values: {e_gt}")
-
         
         # KITTI 数据集使用 SED (对称极线距离) 方法
         geod_dist = np.asarray(self.data['ys'][str(idx)])
         outliers_mask = (geod_dist > self.stereo_geod_th).astype(float)
-
-        #读取pose_rel中的R和t作为真值
-
-
-        #R_true = 
-
         
-        return xs, R, t, outliers_mask, snn_ratio, e_gt
+        return xs, R, t, outliers_mask, snn_ratio, e_gt, R_true, t_true
     
     @classmethod
     def get_noise_mean_n_std(cls, args):

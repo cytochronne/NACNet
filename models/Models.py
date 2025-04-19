@@ -133,7 +133,8 @@ class RobustModel(pl.LightningModule):
         pred_shape, b_pred_outliers, corrected_pts, err_dict = self.batch_eval(batch)
 
         for key in eval_func.get_eval_class_keys():
-            self.log(key, err_dict[key].mean(), prog_bar=True, batch_size=err_dict[key].shape[0])
+            # 直接输出误差，不取平均值
+            self.log(key, err_dict[key].sum(), prog_bar=True, batch_size=err_dict[key].shape[0])
 
         for key, val in err_dict.items():
             val = val.cpu()
@@ -148,16 +149,15 @@ class RobustModel(pl.LightningModule):
         # Test data type
         test_data_type = self.trainer.test_dataloaders.dataset.data_type
 
-        global_eval_func = dataset_utils.get_global_eval_func(self.args)
-        global_err_dict = global_eval_func(self.test_step_errors, True)
+        # 计算每个key的累计误差
+        cumulative_err_dict = {key: val.sum().item() for key, val in self.test_step_errors.items()}
 
         # Log
-        for key, val in global_err_dict.items():
+        for key, val in cumulative_err_dict.items():
             self.log(key, val, prog_bar=True)
 
         test_err_pd = print_utils.dict_to_pandas("TestErr", self.trainer.logged_metrics).T
         test_err_pd.to_excel(path_utils.get_model_test_err_path(self.args, test_data_type))
-
     def batch_eval(self, batch):
         # Get predictions
         #gt_shape是每个样本的“真值形状参数”，本质矩阵。
@@ -169,8 +169,7 @@ class RobustModel(pl.LightningModule):
         pred_shape, b_pred_outliers, corrected_pts = self.get_strict_batch_prediction(sampled_pts, supp_data)
 
         # Evaluation
-        err_dict = eval_func.eval_classification(b_pred_outliers, gt_outliers)
-        err_dict.update(self.eval_reg_func(pred_shape, b_pred_outliers, batch))
+        err_dict = self.eval_reg_func(pred_shape, b_pred_outliers, batch)
         return pred_shape, b_pred_outliers, corrected_pts, err_dict
 
     def get_strict_batch_prediction(self, sampled_pts, supp_data):

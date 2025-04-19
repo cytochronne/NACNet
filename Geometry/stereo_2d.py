@@ -35,52 +35,106 @@ class EvalGlobalErr:
         return auc
 
     def __call__(self, err_dict, calc_val_loss):
-        # Calculate AUC and mAA
-        err_q = err_dict['err_q']
-        err_t = err_dict['err_t']
-        err_qt = torch.maximum(err_q, err_t)
-
-        # Get histogram
-        q_acc = self.get_hist(err_q)
-        t_acc = self.get_hist(err_t)
-        qt_acc = self.get_hist(err_qt)
-
-        # Calculate mAP
-        err_dict = {}
-        for i in range(1, self.maa_ths.shape[0]):
-            err_dict[f'q_mAP_{self.maa_ths[i]}'] = q_acc[:i].mean().item()
-            err_dict[f't_mAP_{self.maa_ths[i]}'] = t_acc[:i].mean().item()
-            err_dict[f'qt_mAP_{self.maa_ths[i]}'] = qt_acc[:i].mean().item()
-
-        # Calculate AUC
-        for auc_threshold in self.auc_ths:
-            err_dict[f'q_auc_{auc_threshold}'] = self.pose_auc(err_q, auc_threshold)
-            err_dict[f't_auc_{auc_threshold}'] = self.pose_auc(err_t, auc_threshold)
-            err_dict[f'qt_auc_{auc_threshold}'] = self.pose_auc(err_qt, auc_threshold)
-
-        if calc_val_loss:
-            err_dict['ValLoss'] = -err_dict['qt_mAP_5.0']
-
-        return err_dict
-
+        # 检查是否包含新的评估指标
+        if 'err_R_norm' in err_dict and 'err_R_log' in err_dict and 'err_t_norm' in err_dict and 'err_t_cos' in err_dict:
+            # 使用新的评估指标
+            err_R_norm = err_dict['err_R_norm']
+            err_R_log = err_dict['err_R_log']
+            err_t_norm = err_dict['err_t_norm']
+            err_t_cos = err_dict['err_t_cos']
+            
+            # 创建新的结果字典
+            result_dict = {
+                'err_R_norm': err_R_norm.mean().item(),
+                'err_R_log': err_R_log.mean().item(),
+                'err_t_norm': err_t_norm.mean().item(),
+                'err_t_cos': err_t_cos.mean().item()
+            }
+            
+            # 如果需要计算验证损失，可以使用旋转和平移误差的加权和
+            if calc_val_loss:
+                # 使用新的评估指标作为验证损失，例如旋转和平移误差的加权和
+                result_dict['ValLoss'] = err_R_norm.mean().item() + err_t_cos.mean().item()
+                
+            return result_dict
+        else:
+            # 如果没有新的评估指标，抛出错误或返回空字典
+            raise KeyError("Required evaluation metrics not found in err_dict. Expected: 'err_R_norm', 'err_R_log', 'err_t_norm', 'err_t_cos'")
 
 def eval_essential_mat(b_pred_shape, b_pred_outliers, batch):
-    _, sampled_pts, gt_outliers, supp_data = batch
+    _, sampled_pts, gt_outliers, supp_data= batch
     b_pred_E = shape_to_E(b_pred_shape)
 
     # Get rotation and translation errors
     pred_R, pred_t = E_to_R_t(b_pred_E, sampled_pts, b_pred_outliers)
-    gt_R, gt_t = supp_data['R'], supp_data['t']
+    
+    # 检查是否有真实姿态数据
+    if 'R_true' in supp_data and 't_true' in supp_data:
+        print("Using R_true and t_true for evaluation.")
+        gt_R, gt_t = supp_data['R_true'], supp_data['t_true']
+    else:
+        # 如果没有真实姿态数据，则使用原始的 R 和 t
+        gt_R, gt_t = supp_data['R'], supp_data['t']
 
-    # To quaternion
-    gt_q = rotation_mat_to_quaternion(gt_R)
-    pred_q = rotation_mat_to_quaternion(pred_R)
+    
 
-    b_err_q, b_err_t = evaluate_q_t(gt_q, gt_t.squeeze(-1), pred_q, pred_t.squeeze(-1))
-    b_err_q = b_err_q * 180.0 / np.pi
-    b_err_t = b_err_t * 180.0 / np.pi
+    # 计算新的评估指标
+    # 1. 旋转矩阵的范数误差
+    device = pred_R.device
+    b_err_R_norm = torch.zeros(pred_R.shape[0], device=device)
+    
+    # 2. Log(R^T*R_gt) 误差
+    b_err_R_log = torch.zeros(pred_R.shape[0], device=device)
+    
+    # 3. 平移向量的范数误差
+    b_err_t_norm = torch.zeros(pred_t.shape[0], device=device)
+    
+    # 4. 余弦距离 1-t·t_gt
+    b_err_t_cos = torch.zeros(pred_t.shape[0], device=device)
+    
+    for i in range(pred_R.shape[0]):
+        # 旋转矩阵范数误差
+        # transpose
+        pred_R2 = pred_R[i].transpose(0, 1)
+        # 
+        pred_t2 = -pred_R2 @ pred_t[i]
 
-    err_dict = dict(err_q=b_err_q.cpu(), err_t=b_err_t.cpu())
+        R_diff = pred_R2 - gt_R[i]
+        #print(pred_R[i], gt_R[i])
+        b_err_R_norm[i] = torch.norm(R_diff, p='fro')
+        
+                # Log(R^T*R_gt) 误差
+        R_rel = torch.matmul(pred_R2.transpose(0, 1), gt_R[i])
+
+        # 使用更适合旋转矩阵的对数映射计算
+        trace = torch.trace(R_rel)
+        # 旋转角度计算 - 限制范围避免数值误差
+        cos_theta = torch.clamp((trace - 1) / 2, -1.0, 1.0)
+        theta = torch.acos(cos_theta)
+
+        # Frobenius范数 = √2·|θ|
+        b_err_R_log[i] =  torch.abs(theta)
+
+        
+        
+        # 平移向量范数误差
+        t_diff = (pred_t2.squeeze(-1)/ (torch.norm(pred_t2.squeeze(-1)) + 1e-10)) - (gt_t[i].squeeze(-1)/(torch.norm(gt_t[i].squeeze(-1)) + 1e-10))
+        b_err_t_norm[i] = torch.norm(t_diff)
+        
+        # 余弦距离 1-t·t_gt
+        t1_normalized = pred_t2.squeeze(-1) / (torch.norm(pred_t2.squeeze(-1)) + 1e-10)
+        t2_normalized = gt_t[i].squeeze(-1) / (torch.norm(gt_t[i].squeeze(-1)) + 1e-10)
+        b_err_t_cos[i] = 1.0 - (torch.dot(t1_normalized, t2_normalized))
+
+    # 合并所有误差指标
+    err_dict = dict(
+    
+        # 新增误差指标
+        err_R_norm=b_err_R_norm.cpu(),
+        err_R_log=b_err_R_log.cpu(),
+        err_t_norm=b_err_t_norm.cpu(),
+        err_t_cos=b_err_t_cos.cpu()
+    )
     return err_dict
 
 

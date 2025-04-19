@@ -3,6 +3,7 @@ from utils import path_utils, trainer_utils, arg_parser
 from Datasets.dataset_utils import get_test_dataloader
 import pandas as pd
 import copy
+import os
 
 
 def eval_exp(args, model):
@@ -28,7 +29,7 @@ def eval_runs():
 
     print(f"# # # # # # # # Evaluating {args.run_name}:{args.version} # # # # # # # # ")
     
-    sequences = args.sequences.split(',') if args.sequences else ['00', '01', '02', '03', '04', '05', '06', '07', '08', '09', '10']
+    sequences = args.sequences.split(',') if args.sequences else ['00']
     
     for seq in sequences:
         seq_args = copy.copy(args)  # 正确使用copy模块复制args
@@ -42,6 +43,16 @@ def eval_runs():
         exp_errors_pd = pd.DataFrame.from_dict(exp_errors)
         exp_errors_pd.index = [args.run_name]
 
-
+        # 保存每个样本的单独误差
+        output_dir = os.path.join("results", args.run_name)
+        os.makedirs(output_dir, exist_ok=True)
+        samples_csv_path = os.path.join(output_dir, f"{args.run_name}_{seq}_sample_errors.csv")
+        samples_errors.to_csv(samples_csv_path)
+        print(f"Individual sample errors saved to {samples_csv_path}")
+        
+        # 同样保存聚合误差
+        exp_csv_path = os.path.join(output_dir, f"{args.run_name}_{seq}_aggregate_errors.csv")
+        exp_errors_pd.to_csv(exp_csv_path)
+        print(f"Aggregate errors saved to {exp_csv_path}")
 if __name__ == "__main__":
     eval_runs()

@@ -1,6 +1,10 @@
 
 Datasets_filtered/
 OANet/
+0*/
+*.csv
+10/
+poses/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

@@ -29,7 +29,7 @@ def eval_classification(b_pred_outliers, gt_outliers):
 
 
 def get_eval_class_keys():
-    return ["IoU", "Precision", "Recall", "F1"]
+    return ["err_R_norm", "err_R_log", "err_t_norm", "err_t_cos"]
 
 
 def rad2deg(theta):
