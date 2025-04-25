@@ -5,6 +5,7 @@ OANet/
 *.csv
 10/
 poses/
+ETHdataset/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

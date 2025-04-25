@@ -22,12 +22,12 @@ class BaseStereoDataset(BaseDataset.BaseDataset, ABC):
 
     def get_item(self, idx):
         xs, R, t, outliers_mask, snn_ratio, e_gt, R_true, t_true = self.get_stereo_data(idx)
-
+        
         # Get corrected pts
         pts1, pts2 = np.split(xs, 2, axis=-1)
         crct_pts1, crct_pts2 = stereo_2d.correct_matches(e_gt, pts1, pts2)
         crct_pts = np.concatenate([crct_pts1, crct_pts2], axis=1).astype('float64')
-
+        
         # Remove noise
         if self.noise_free:
             inliers_mask = (outliers_mask == 0).squeeze(1)

@@ -1,6 +1,6 @@
 from Datasets.BaseDataset import init_dataloader
 from Datasets.StereoDataset import YFCCDataset, SUN3DDataset, KITTIDataset
-
+from colmap_dataset import ETH3D
 
 def get_dataset_class(args):
     if args.data_type == "YFCC":
@@ -9,6 +9,8 @@ def get_dataset_class(args):
         return SUN3DDataset
     elif args.data_type == "KITTI":
         return KITTIDataset
+    elif args.data_type == "ETH3D":
+        return ETH3D
     else:
         raise NotImplementedError("Unsupported dataset type: " + args.data_type)
 
@@ -32,6 +34,10 @@ def get_test_dataloader(args, known_scenes=False, batch_size=32):
         data_type = f"test_{args.sequence}"
         
         test_ds = dataset_class(data_type, args)
+    if args.data_type == "ETH3D":
+        # 创建特定序列的数据集
+        test_ds = dataset_class(args.data_path, 'test')
+
     elif known_scenes:
         test_ds = dataset_class('testknown', args)
     else:
