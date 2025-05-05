@@ -127,7 +127,7 @@ class BaseDataset(Dataset, ABC):
     @classmethod
     def get_regression_loss(cls, args):
         return Losses.MSELoss()
-
+    
     @classmethod
     @abstractmethod
     def get_noise_loss(cls, args):

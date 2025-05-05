@@ -117,7 +117,7 @@ class RobustModel(pl.LightningModule):
     def on_validation_epoch_end(self):
         global_eval_func = dataset_utils.get_global_eval_func(self.args)
         global_err_dict = global_eval_func(self.val_step_errors, True)
-
+        
         # Log
         if self.trainer.state.stage != pl.trainer.states.RunningStage.SANITY_CHECKING:
             for key, val in global_err_dict.items():

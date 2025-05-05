@@ -1,7 +1,7 @@
 import h5py
 import numpy as np
 
-file_path = '/hpc2hdd/home/qzhang749/yanzhe/test/NACNet/OANet/data_dump/kitti-00-sift-1000-test.hdf5'
+file_path = '/hpc2hdd/home/qzhang749/yanzhe/test/NACNet/OANet/data_dump/ETH-boulders-sift-1000-test.hdf5'
 
 with h5py.File(file_path, 'r') as f:
     # 打印所有顶级键

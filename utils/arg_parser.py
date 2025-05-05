@@ -70,8 +70,11 @@ def get_config_parser():
     parser.add_argument('--ransac_in_eval', type=argparse_bool, default=False)
     parser.add_argument('--eval_knwon_scenes', type=argparse_bool, default=False)
 
-    parser.add_argument('--sequences', type=str, default='00,01,02,03,04,05,06,07,08,09,10',
-                       help='Comma-separated list of sequences to evaluate')
+    parser.add_argument(
+        '--sequences',
+        type=str,
+        default='observatory,old_computer,statue,terrace_2'
+    )
     return parser
 
 

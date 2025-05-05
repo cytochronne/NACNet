@@ -5,8 +5,9 @@ import numpy as np
 import os
 import cv2
 from tqdm import tqdm
-
-from dfe.utils import colmap_read, colmap_utils
+import sys
+sys.path.append("../../")
+from . import colmap_read, colmap_utils
 
 
 class ETH3D():
@@ -36,6 +37,7 @@ class ETH3D():
             compute_virtual_points (bool, optional): whether to compute virtual points. Defaults to True.
             mode (str, optional): "train" or "test" mode. Defaults to "test".
         """        
+        self.num_points = num_points 
         self.mode = mode
         self.compute_virtual_points = compute_virtual_points
         

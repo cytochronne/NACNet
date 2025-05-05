@@ -97,14 +97,14 @@ def eval_essential_mat(b_pred_shape, b_pred_outliers, batch):
         # transpose
         pred_R2 = pred_R[i].transpose(0, 1)
         # 
-        pred_t2 = -pred_R2 @ pred_t[i]
+        pred_t2 = pred_t[i]
 
         R_diff = pred_R2 - gt_R[i]
         #print(pred_R[i], gt_R[i])
         b_err_R_norm[i] = torch.norm(R_diff, p='fro')
         
                 # Log(R^T*R_gt) 误差
-        R_rel = torch.matmul(pred_R2.transpose(0, 1), gt_R[i])
+        R_rel = torch.matmul(pred_R2, gt_R[i])
 
         # 使用更适合旋转矩阵的对数映射计算
         trace = torch.trace(R_rel)
@@ -114,7 +114,7 @@ def eval_essential_mat(b_pred_shape, b_pred_outliers, batch):
 
         # Frobenius范数 = √2·|θ|
         b_err_R_log[i] =  torch.abs(theta)
-
+        b_err_R_log[i] = min(3.141592 - b_err_R_log[i], b_err_R_log[i])
         
         
         # 平移向量范数误差
@@ -124,7 +124,7 @@ def eval_essential_mat(b_pred_shape, b_pred_outliers, batch):
         # 余弦距离 1-t·t_gt
         t1_normalized = pred_t2.squeeze(-1) / (torch.norm(pred_t2.squeeze(-1)) + 1e-10)
         t2_normalized = gt_t[i].squeeze(-1) / (torch.norm(gt_t[i].squeeze(-1)) + 1e-10)
-        b_err_t_cos[i] = 1.0 - (torch.dot(t1_normalized, t2_normalized))
+        b_err_t_cos[i] = 1.0 - abs(torch.dot(t1_normalized, t2_normalized))
 
     # 合并所有误差指标
     err_dict = dict(

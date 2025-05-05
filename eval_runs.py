@@ -21,12 +21,12 @@ def eval_exp(args, model):
 
 def eval_runs():
     args = arg_parser.get_args()
-
+    
     # Load model
     ckpt_path = '/hpc2hdd/home/qzhang749/yanzhe/test/NACNet/Experiments/test/17_04_2025_14_57_25/chckpt/epoch=9-step=169120.ckpt'
     print(f"Loading model from: {ckpt_path}")
     model = Models.RobustModel.load_from_checkpoint(ckpt_path, args=args)
-
+    
     print(f"# # # # # # # # Evaluating {args.run_name}:{args.version} # # # # # # # # ")
     
     sequences = args.sequences.split(',') if args.sequences else ['00']

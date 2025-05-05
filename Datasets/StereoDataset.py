@@ -328,23 +328,24 @@ class KITTIDataset(RealStereoDataset):
             self.data_file_path = self.get_sequence_file_path(args.data_path, self.sequence, args.desc_name)
         
         self.data_len = self.get_data_len(self.data_file_path, self.mode, args.desc_name)
-        print(f"KITTI Dataset initialized: wanted Mode={self.mode}, wanted Sequence={self.sequence}, actual File={self.data_file_path}")
+        print(f"ETH Dataset initialized: wanted Mode={self.mode}, wanted Sequence={self.sequence}, actual File={self.data_file_path}")
 
     @classmethod
     def get_data_file_path(cls, data_path, data_type, desc_name):
         """获取所有 KITTI 数据的主 HDF5 文件路径"""
-        return os.path.join(data_path, f"kitti-{desc_name}-{data_type}.hdf5")
+        return os.path.join(data_path, f"ETH-{desc_name}-{data_type}.hdf5")
     
     @classmethod
     def get_sequence_file_path(cls, data_path, sequence, desc_name):
         """获取特定序列的 HDF5 文件路径"""
         # 首先检查是否有专用的序列 HDF5 文件
-        sequence_file = os.path.join(data_path, f"kitti-{sequence}-{desc_name}-test.hdf5")
+        sequence_file = os.path.join(data_path, f"ETH-{sequence}-{desc_name}-test.hdf5")
+        print("Checking for sequence file:", sequence_file)
         if os.path.exists(sequence_file):
             return sequence_file
         
         # 否则使用主 HDF5 文件
-        return os.path.join(data_path, f"kitti-{desc_name}-test.hdf5")
+        return os.path.join(data_path, f"ETH-{desc_name}-test.hdf5")
 
     @classmethod
     def get_data_len(cls, data_path, data_type, desc_name):

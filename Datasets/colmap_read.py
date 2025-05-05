@@ -131,7 +131,7 @@ def read_images_text(path):
                 image_name = elems[9]
                 # image_name is dslr_calibration_undistorted/xxx.JPG, insert "images" before xxx.JPG
                 image_name = os.path.join("images/dslr_images_undistorted", os.path.basename(image_name))   
-
+                # Read the next line for the 2D points
                 elems = fid.readline().split()
                 
                 # Create a dictionary with point3D_ids as keys and xy coordinates as values

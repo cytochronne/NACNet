@@ -1,6 +1,6 @@
 from Datasets.BaseDataset import init_dataloader
 from Datasets.StereoDataset import YFCCDataset, SUN3DDataset, KITTIDataset
-from colmap_dataset import ETH3D
+
 
 def get_dataset_class(args):
     if args.data_type == "YFCC":
@@ -9,8 +9,6 @@ def get_dataset_class(args):
         return SUN3DDataset
     elif args.data_type == "KITTI":
         return KITTIDataset
-    elif args.data_type == "ETH3D":
-        return ETH3D
     else:
         raise NotImplementedError("Unsupported dataset type: " + args.data_type)
 
